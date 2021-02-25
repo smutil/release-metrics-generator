@@ -4,6 +4,9 @@
 *.dll
 *.so
 *.dylib
+release_metrics_generator
+go.sum
+testconfig.yml
 
 # Test binary, built with `go test -c`
 *.test
