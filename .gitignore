@@ -8,6 +8,7 @@ release_metrics_generator
 go.sum
 testconfig.yml
 ReleaseMetrics.html
+ReleaseMetrics.json
 
 # Test binary, built with `go test -c`
 *.test
