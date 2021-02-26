@@ -17,6 +17,8 @@ import (
 	"time"
 	"math"
 	"html/template"
+	"io/ioutil"
+	"encoding/json"
 )
 
 type Config struct {
@@ -45,7 +47,7 @@ type ReleaseDetail struct {
 
 
 type ReleaseMetricsPage struct {
-	PageTitle   string
+	Application   string
 	Releases    []ReleaseDetail
 }
 
@@ -110,15 +112,17 @@ func generateMetrics(scm_repo string, scm_usr string, scm_pwd string) {
 		CheckIfError(err)
 
 		tmpl := template.Must(template.ParseFiles("layout.html"))
-		data := ReleaseMetricsPage{PageTitle: "Release Metrics", Releases: Releases}
+		data := ReleaseMetricsPage{Application: "Release Metrics", Releases: Releases}
 
 		f, err := os.Create("ReleaseMetrics.html")
 		CheckIfError(err)
 		err = tmpl.Execute(f, data)
 		CheckIfError(err)
         f.Close()
+
+		metricsJson,_ := json.MarshalIndent(data, ""," ")
+		ioutil.WriteFile("ReleaseMetrics.json", metricsJson, 0644)
 	}
-	fmt.Println(Releases)
 	CheckIfError(err)
 }
 

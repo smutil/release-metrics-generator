@@ -19,7 +19,7 @@ Usage
  ```
  ./release_metrics_generator --config /path-to-config.yml
  ```
- step 4. ReleaseMetrics.html will be generated in same location.
+ step 4. ReleaseMetrics.html and ReleaseMetrics.json will be generated in same location.
 
  ![Alt text](docs/images/release_metrics.png?raw=true "Title")
 

@@ -1,0 +1,44 @@
+{
+ "Application": "Release Metrics",
+ "Releases": [
+  {
+   "TagName": "v1.0",
+   "ReleaseDate": "2021-02-25T23:14:22+01:00",
+   "Author": "mishra.satyabrat@gmail.com",
+   "Changes": [
+    {
+     "CommitId": "03e45cf13009b5782614d2d06c4b6c1f93dfec51",
+     "Message": "adding actions for release tasks",
+     "Author": "satyabrat",
+     "Leadtime": 176000000000
+    },
+    {
+     "CommitId": "a74c59f56c42398aef6d4f328df4e5a648a83052",
+     "Message": "installation and usage details in readme",
+     "Author": "smutil",
+     "Leadtime": 1522000000000
+    },
+    {
+     "CommitId": "b8cdb885efab5bdb99f311a596d78aeb9c371fe8",
+     "Message": "git actions for build setup",
+     "Author": "satyabrat",
+     "Leadtime": 3717000000000
+    },
+    {
+     "CommitId": "e2458e65c1a6a41e38e2ceb823df1d1ff03bfe41",
+     "Message": "initial commits",
+     "Author": "satyabrat",
+     "Leadtime": 4253000000000
+    },
+    {
+     "CommitId": "0993d272c8bdf790faa0f52036f595f11758ff62",
+     "Message": "Initial commit",
+     "Author": "smutil",
+     "Leadtime": 6270000000000
+    }
+   ],
+   "ChangeVolume": 5,
+   "LeadTime": 53
+  }
+ ]
+}
