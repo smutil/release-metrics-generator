@@ -1,11 +1,19 @@
-# Release Metrics Generator ![example workflow](https://github.com/smutil/release_metrics_generator/actions/workflows/build-actions.yml/badge.svg)
+# Release Metrics Generator 
+
+![example workflow](https://github.com/smutil/release_metrics_generator/actions/workflows/build-actions.yml/badge.svg)![example workflow](https://github.com/smutil/release_metrics_generator/actions/workflows/release-actions.yml/badge.svg)
 
 CLI to generate below release metrics based on tag and git commit log.
-1. Release Name
-2. Change Volume
-3. Leadtime
-4. Author
-5. Release Date
+1. Application Name
+2. Release Name (version)
+3. Change Volume
+4. Leadtime
+5. Author
+6. Release Date
+
+Prerequsites
+------------
+1. Production deployments must be done from Master/Main branch
+2. Tag must be created immedialty after Production Deployment
 
 
 Usage

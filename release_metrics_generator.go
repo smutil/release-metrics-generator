@@ -1,32 +1,40 @@
 package main
 
 import (
-	"io"
-	"log"
-	"os"
+	"encoding/json"
+	"flag"
 	"fmt"
-	"strings"
+	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/go-git/go-billy/v5/memfs"
 	"gopkg.in/yaml.v2"
-	"flag"
-	"sort"
-	"time"
-	"math"
 	"html/template"
+	"io"
 	"io/ioutil"
-	"encoding/json"
+	"log"
+	"math"
+	"os"
+	"sort"
+	"strings"
+	"time"
 )
 
 type Config struct {
-    Git struct {
-        URL       string `yaml:"url"`
-        Username  string `yaml:"username"`
-        Password  string `yaml:"password"`
-    }
+	Global      Global
+	GitRepoList []Git `yaml:"git"`
+}
+
+type Global struct {
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+}
+
+type Git struct {
+	URL      string `yaml:"url"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 type ChangeDetail struct {
@@ -37,21 +45,21 @@ type ChangeDetail struct {
 }
 
 type ReleaseDetail struct {
-	TagName 	string
-	ReleaseDate time.Time
-	Author 		string
-	Changes 	[]ChangeDetail
+	Application  string
+	TagName      string
+	ReleaseDate  time.Time
+	Author       string
+	Changes      []ChangeDetail
 	ChangeVolume int
 	LeadTime     float64
 }
 
-
 type ReleaseMetricsPage struct {
-	Application   string
+	Application string
 	Releases    []ReleaseDetail
 }
 
-func main()  {
+func main() {
 	var configPath string
 	flag.StringVar(&configPath, "config", "./config.yml", "path to config file")
 	flag.Parse()
@@ -67,73 +75,80 @@ func main()  {
 	if err != nil {
 		log.Fatal(err)
 	}
-	generateMetrics(config.Git.URL,config.Git.Username,config.Git.Password)
+	generateMetrics(*config)
 }
 
-func generateMetrics(scm_repo string, scm_usr string, scm_pwd string) {
-	r, _ := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
-		URL: scm_repo,
-        Auth: &http.BasicAuth{
-			Username: scm_usr,
-			Password: scm_pwd,
-		},
-	})
-	tagrefs, err := r.TagObjects()
-	CheckIfError(err)
-	var tags[]*object.Tag 
-	err = tagrefs.ForEach(func(t *object.Tag) error {
-		tags = append(tags, t)	
-		return nil
-	})
-	sort.Slice(tags, func(i, j int) bool {
-		return tags[i].Tagger.When.After(tags[j].Tagger.When)
-	})
-	var Releases[]ReleaseDetail
-	for i, t := range tags {
-		var changes[]ChangeDetail
-		var breakme bool = false
-		cIter, err := r.Log(&git.LogOptions{From: t.Target})
-		var leadtimeMinutes float64
-		err = cIter.ForEach(func(c *object.Commit) error {
-			hash := c.Hash.String()
-			if ( ((len(tags)-1)-i != 0) && c.Hash.String() == tags[i+1].Target.String()) {
-				breakme = true
-			}
-			if !breakme {
-				line := strings.Split(c.Message, "\n")
-				change := ChangeDetail{CommitId : hash, Message: line[0], Author : c.Author.Name, Leadtime : t.Tagger.When.Sub(c.Author.When)}
-				leadtimeMinutes += t.Tagger.When.Sub(c.Author.When).Minutes()
-				changes = append(changes, change)
-			}
+func generateMetrics(config Config) {
+	var scm_repo, scm_usr, scm_pwd string
+	scm_usr = config.Global.Username
+	scm_pwd = config.Global.Password
+	var Releases []ReleaseDetail
+	for _, gitrepo := range config.GitRepoList {
+		scm_repo = gitrepo.URL
+		log.Println("genertaing metrics for : " + scm_repo)
+		r, _ := git.Clone(memory.NewStorage(), nil, &git.CloneOptions{
+			URL: scm_repo,
+			Auth: &http.BasicAuth{
+				Username: scm_usr,
+				Password: scm_pwd,
+			},
+		})
+		tagrefs, err := r.TagObjects()
+		CheckIfError(err)
+		var tags []*object.Tag
+		err = tagrefs.ForEach(func(t *object.Tag) error {
+			tags = append(tags, t)
 			return nil
 		})
-		release := ReleaseDetail{TagName : t.Name  , ReleaseDate : t.Tagger.When , Author : t.Tagger.Email, Changes : changes, ChangeVolume: len(changes), LeadTime : math.Trunc(leadtimeMinutes/float64(len(changes)))}
-		Releases = append(Releases, release)
-		CheckIfError(err)
+		sort.Slice(tags, func(i, j int) bool {
+			return tags[i].Tagger.When.After(tags[j].Tagger.When)
+		})
 
-		tmpl := template.Must(template.ParseFiles("layout.html"))
-		data := ReleaseMetricsPage{Application: "Release Metrics", Releases: Releases}
-
-		f, err := os.Create("ReleaseMetrics.html")
-		CheckIfError(err)
-		err = tmpl.Execute(f, data)
-		CheckIfError(err)
-        f.Close()
-
-		metricsJson,_ := json.MarshalIndent(data, ""," ")
-		ioutil.WriteFile("ReleaseMetrics.json", metricsJson, 0644)
+		for i, t := range tags {
+			var changes []ChangeDetail
+			var breakme bool = false
+			cIter, err := r.Log(&git.LogOptions{From: t.Target})
+			var leadtimeMinutes float64
+			err = cIter.ForEach(func(c *object.Commit) error {
+				hash := c.Hash.String()
+				if ((len(tags)-1)-i != 0) && c.Hash.String() == tags[i+1].Target.String() {
+					breakme = true
+				}
+				if !breakme {
+					line := strings.Split(c.Message, "\n")
+					change := ChangeDetail{CommitId: hash, Message: line[0], Author: c.Author.Name, Leadtime: t.Tagger.When.Sub(c.Author.When)}
+					leadtimeMinutes += t.Tagger.When.Sub(c.Author.When).Minutes()
+					changes = append(changes, change)
+				}
+				return nil
+			})
+			release := ReleaseDetail{Application: getApplicationName(scm_repo), TagName: t.Name, ReleaseDate: t.Tagger.When, Author: t.Tagger.Email, Changes: changes, ChangeVolume: len(changes), LeadTime: math.Trunc(leadtimeMinutes / float64(len(changes)))}
+			Releases = append(Releases, release)
+			CheckIfError(err)
+		}
 	}
+	sort.Slice(Releases, func(i, j int) bool {
+		return Releases[i].ReleaseDate.After(Releases[j].ReleaseDate)
+	})
+	tmpl := template.Must(template.ParseFiles("layout.html"))
+	data := ReleaseMetricsPage{Application: "Release Metrics", Releases: Releases}
+
+	f, err := os.Create("ReleaseMetrics.html")
 	CheckIfError(err)
+	err = tmpl.Execute(f, data)
+	CheckIfError(err)
+	f.Close()
+
+	metricsJson, _ := json.MarshalIndent(data, "", " ")
+	ioutil.WriteFile("ReleaseMetrics.json", metricsJson, 0644)
 }
-
-
 
 func readfile(scm_repo string, scm_usr string, scm_pwd string) {
 	fs := memfs.New()
 	storer := memory.NewStorage()
 	_, err := git.Clone(storer, fs, &git.CloneOptions{
 		URL: scm_repo,
-        Auth: &http.BasicAuth{
+		Auth: &http.BasicAuth{
 			Username: scm_usr,
 			Password: scm_pwd,
 		},
@@ -188,4 +203,11 @@ func ReadYML(configPath string, configPointer interface{}) error {
 
 func Info(format string, args ...interface{}) {
 	fmt.Printf("\x1b[34;1m%s\x1b[0m\n", fmt.Sprintf(format, args...))
+}
+
+func getApplicationName(gitrepo string) string {
+	split := strings.Split(gitrepo, "/")
+
+	return strings.Split(split[len(split)-1], ".")[0]
+
 }
