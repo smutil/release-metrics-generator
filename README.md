@@ -10,6 +10,12 @@ CLI to generate below release metrics based on tag and git commit log.
 5. Author
 6. Release Date
 
+This tool can also push the data to influxdb and you can create dashboard for change leadtime, change volume etc. Please refer below sample dashboard.
+
+ ![Alt text](docs/images/lead_time.png?raw=true "Leadtime")
+
+ ![Alt text](docs/images/change_volume.png?raw=true "ChangeVolume")
+
 Prerequsites
 ------------
 1. Production deployments must be done from Master/Main branch

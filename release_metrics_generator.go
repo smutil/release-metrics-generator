@@ -9,6 +9,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/storage/memory"
+	"github.com/influxdata/influxdb-client-go/v2"
 	"gopkg.in/yaml.v2"
 	"html/template"
 	"io"
@@ -23,12 +24,20 @@ import (
 
 type Config struct {
 	Global      Global
+	Influxdb	Influxdb
 	GitRepoList []Git `yaml:"git"`
 }
 
 type Global struct {
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
+}
+
+type Influxdb struct {
+	Url string `yaml:"url"`
+	Token string `yaml:"token"`
+	Org string `yaml:"org"`
+	Bucket string `yaml:"bucket"`
 }
 
 type Git struct {
@@ -141,6 +150,31 @@ func generateMetrics(config Config) {
 
 	metricsJson, _ := json.MarshalIndent(data, "", " ")
 	ioutil.WriteFile("ReleaseMetrics.json", metricsJson, 0644)
+	if config.Influxdb.Url != "" {
+		pushMetrics(config, Releases)
+	}
+}
+
+func pushMetrics(config Config, releases []ReleaseDetail){
+	client := influxdb2.NewClient(config.Influxdb.Url, config.Influxdb.Token)
+	defer client.Close()
+	writeAPI := client.WriteAPI(config.Influxdb.Org, config.Influxdb.Bucket)
+	for _, releaseDetail := range releases {
+		p := influxdb2.NewPointWithMeasurement("releasemetrics").
+		AddTag("scm", "git").
+		AddField("leadtime", releaseDetail.LeadTime ).
+		AddField("changevolume", releaseDetail.ChangeVolume).
+		AddField("Application", releaseDetail.Application).
+		AddField("TagName", releaseDetail.TagName).
+		SetTime(releaseDetail.ReleaseDate)
+		// write point asynchronously
+		writeAPI.WritePoint(p)
+	}
+	// Flush writes
+	writeAPI.Flush()
+
+	
+
 }
 
 func readfile(scm_repo string, scm_usr string, scm_pwd string) {
